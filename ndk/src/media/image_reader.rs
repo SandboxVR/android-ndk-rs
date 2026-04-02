@@ -284,13 +284,14 @@ impl Drop for ImageReader {
             }
         }
 
+        unsafe { ffi::AImageReader_delete(self.as_ptr()) };
+
+        // Drop callback storage only after native reader destruction completes.
         self.image_cb = None;
         #[cfg(feature = "api-level-26")]
         {
             self.buffer_removed_cb = None;
         }
-
-        unsafe { ffi::AImageReader_delete(self.as_ptr()) };
     }
 }
 

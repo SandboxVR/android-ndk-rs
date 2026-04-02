@@ -260,6 +260,36 @@ impl ImageReader {
 
 impl Drop for ImageReader {
     fn drop(&mut self) {
+        // Unregister callbacks before delete so native side no longer keeps Rust
+        // callback context pointers during teardown.
+        let mut image_listener = ffi::AImageReader_ImageListener {
+            context: std::ptr::null_mut(),
+            onImageAvailable: None,
+        };
+        unsafe {
+            ffi::AImageReader_setImageListener(self.as_ptr(), &mut image_listener);
+        }
+
+        #[cfg(feature = "api-level-26")]
+        {
+            let mut buffer_removed_listener = ffi::AImageReader_BufferRemovedListener {
+                context: std::ptr::null_mut(),
+                onBufferRemoved: None,
+            };
+            unsafe {
+                ffi::AImageReader_setBufferRemovedListener(
+                    self.as_ptr(),
+                    &mut buffer_removed_listener,
+                );
+            }
+        }
+
+        self.image_cb = None;
+        #[cfg(feature = "api-level-26")]
+        {
+            self.buffer_removed_cb = None;
+        }
+
         unsafe { ffi::AImageReader_delete(self.as_ptr()) };
     }
 }
